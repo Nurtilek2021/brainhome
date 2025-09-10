@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Умный дом</title>
+  <style>
+    :root{
+      --bg:#0f1115; --card:#171a21; --muted:#2a2f3a; --text:#e6e8ee; --soft:#9aa3b2; --accent:#4cc9f0; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+      --tab:#1b202a; --tab-active:#232938; --shadow:0 6px 20px rgba(0,0,0,.35);
+    }
+    [data-theme="light"]{
+      --bg:#f6f7fb; --card:#ffffff; --muted:#e7eaf0; --text:#1b2330; --soft:#5a6475; --accent:#2563eb; --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
+      --tab:#eef1f7; --tab-active:#dde3ee; --shadow:0 6px 18px rgba(0,0,0,.12);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; background:var(--bg); color:var(--text);}
+    .app{display:flex;flex-direction:column;min-height:100dvh;}
+    header{position:sticky;top:0;z-index:4;background:var(--bg);}
+    .topbar{display:flex;align-items:center;gap:.8rem;padding:1rem 1.2rem;border-bottom:1px solid var(--muted)}
+    .logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#6ee7b7);box-shadow:var(--shadow)}
+    .title{font-weight:700;letter-spacing:.2px}
+    .subtitle{font-size:.85rem;color:var(--soft)}
+
+    main{flex:1;display:grid;grid-template-rows:1fr}
+    .view{display:none; padding:1rem; max-width:900px; margin:0 auto 6rem;}
+    .view.active{display:block}
+
+    .grid{display:grid;gap:12px}
+    .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+    .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+    @media (min-width:520px){
+      .grid.cols-2{grid-template-columns:repeat(3,1fr)}
+      .grid.cols-3{grid-template-columns:repeat(6,1fr)}
+    }
+
+    .card{background:var(--card);border:1px solid var(--muted);border-radius:16px; padding:14px; box-shadow:var(--shadow)}
+    .card h3{margin:.2rem 0 .6rem;font-size:1rem}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+    .muted{color:var(--soft);font-size:.9rem}
+    .pill{padding:.2rem .55rem;border-radius:999px;border:1px solid var(--muted);font-size:.78rem;color:var(--soft)}
+
+    .switch{position:relative;width:48px;height:28px;background:var(--muted);border-radius:999px;cursor:pointer;transition:.2s}
+    .switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+    .switch.on{background:linear-gradient(135deg,var(--accent),#6ee7b7)}
+    .switch.on::after{left:23px}
+
+    .slider{appearance:none;width:100%;height:8px;border-radius:999px;background:var(--muted);outline:none}
+    .slider::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);border:2px solid var(--card);}
+
+    .tabs{position:fixed;bottom:0;left:0;right:0;background:var(--tab);border-top:1px solid var(--muted);display:grid;grid-template-columns:repeat(7,1fr);}
+    .tab{appearance:none;background:none;border:none;color:var(--soft);padding:.6rem .2rem;display:flex;flex-direction:column;align-items:center;gap:.2rem;font-size:.75rem;cursor:pointer}
+    .tab.active{background:var(--tab-active);color:var(--text)}
+    .tab svg{width:22px;height:22px}
+
+    .badge{font-size:.75rem}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .danger{color:var(--danger)}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .device{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+    .device .name{font-weight:600}
+
+    .camera{position:relative;overflow:hidden;border-radius:12px;background:#000;aspect-ratio:16/9;border:1px solid var(--muted)}
+    .camera .hint{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.5);color:#fff;padding:4px 8px;border-radius:8px;font-size:.8rem}
+
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:1rem;z-index:10}
+    .modal.open{display:flex}
+    .modal .sheet{background:var(--card);border:1px solid var(--muted);border-radius:16px;max-width:800px;width:100%;padding:1rem}
+
+    .kv{display:grid;grid-template-columns:1fr auto;gap:8px}
+    .kv .k{color:var(--soft)}
+
+    .btn{appearance:none;border:none;background:var(--accent);color:#fff;padding:.7rem 1rem;border-radius:12px;cursor:pointer;font-weight:600}
+    .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--muted)}
+
+    .hintbar{display:flex;gap:.6rem;flex-wrap:wrap}
+    .chip{border:1px dashed var(--muted);padding:.3rem .6rem;border-radius:999px;font-size:.8rem;color:var(--soft)}
+
+    .chart{width:100%;height:140px;border-radius:12px;border:1px solid var(--muted);background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);display:block}
+  </style>
+</head>
+<body>
+  <div class="app" id="app" data-theme="dark">
+    <header>
+      <div class="topbar">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="title">Умный дом</div>
+          <div class="subtitle" id="subtitle">Дом онлайн • все системы в норме</div>
+        </div>
+        <div style="margin-left:auto" class="pill" id="timepill">--:--</div>
+      </div>
+    </header>
+
+    <main>
+      <!-- 1: Главная -->
+      <section class="view active" id="tab-home" aria-label="Главная">
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Сценарии</h3>
+            <div class="list">
+              <div class="device"><span class="name">Я дома</span><div class="btn" data-run-scenario="home">Запустить</div></div>
+              <div class="device"><span class="name">Ушел</span><div class="btn" data-run-scenario="away">Запустить</div></div>
+              <div class="device"><span class="name">Ночь</span><div class="btn" data-run-scenario="night">Запустить</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Климат</h3>
+            <div class="kv">
+              <div class="k">Температура</div><div><strong id="climate-temp">22.0</strong>°C</div>
+              <div class="k">Влажность</div><div><strong id="climate-hum">45</strong>%</div>
+              <div class="k">Цель</div><div><strong id="climate-target">23</strong>°C</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Безопасность</h3>
+            <div class="row">
+              <div class="muted">Система</div>
+              <div class="switch" id="sec-armed" role="switch" aria-label="Охрана"></div>
+            </div>
+            <div class="hintbar" style="margin-top:10px">
+              <div class="chip">Дверь: <span id="door-state">закрыта</span></div>
+              <div class="chip">Окна: <span id="win-state">норм</span></div>
+              <div class="chip">Датчики: <span id="sens-state">OK</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Энергия</h3>
+            <svg class="chart" id="energy-chart" viewBox="0 0 320 100" preserveAspectRatio="none" aria-label="График потребления"></svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2: Свет -->
+      <section class="view" id="tab-lights" aria-label="Свет">
+        <div class="card">
+          <h3>Комнаты</h3>
+          <div class="list" id="lights-list"></div>
+        </div>
+        <div class="card">
+          <h3>Яркость (все лампы)</h3>
+          <input type="range" min="0" max="100" value="70" class="slider" id="lights-bright">
+          <div class="muted" id="lights-bright-val">70%</div>
+        </div>
+      </section>
+
+      <!-- 3: Климат -->
+      <section class="view" id="tab-climate" aria-label="Климат">
+        <div class="card">
+          <h3>Целевая температура</h3>
+          <input type="range" min="16" max="28" value="23" class="slider" id="target-temp">
+          <div class="muted">Цель: <span id="target-temp-val">23</span>°C</div>
+        </div>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Обогрев</h3>
+            <div class="row"><span class="muted">Котел</span><div class="switch" id="heat-switch"></div></div>
+          </div>
+          <div class="card">
+            <h3>Охлаждение</h3>
+            <div class="row"><span class="muted">Кондиционер</span><div class="switch" id="cool-switch"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4: Безопасность -->
+      <section class="view" id="tab-security" aria-label="Безопасность">
+        <div class="card">
+          <h3>Статус</h3>
+          <div class="row"><span class="muted">Охрана</span><div class="switch" id="arm-switch"></div></div>
+        </div>
+        <div class="card">
+          <h3>Замки</h3>
+          <div class="list" id="locks-list"></div>
+        </div>
+      </section>
+
+      <!-- 5: Камеры -->
+      <section class="view" id="tab-cams" aria-label="Камеры">
+        <div class="grid cols-2" id="cams-grid"></div>
+        <div class="muted" style="margin-top:10px">Нажмите на превью, чтобы открыть поток (демо‑режим).</div>
+      </section>
+
+      <!-- 6: Энергия -->
+      <section class="view" id="tab-energy" aria-label="Энергия">
+        <div class="card">
+          <h3>Потребление за 7 дней</h3>
+          <svg class="chart" id="energy-chart-2" viewBox="0 0 320 120" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="card">
+          <h3>Счётчик</h3>
+          <div class="kv">
+            <div class="k">Текущая мощность</div><div><strong id="pow-now">0.62</strong> кВт</div>
+            <div class="k">Сегодня</div><div><strong id="kwh-today">9.8</strong> кВт⋅ч</div>
+            <div class="k">Месяц</div><div><strong id="kwh-month">186</strong> кВт⋅ч</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7: Настройки -->
+      <section class="view" id="tab-settings" aria-label="Настройки">
+        <div class="card">
+          <h3>Тема</h3>
+          <div class="row"><span class="muted">Светлая тема</span><div class="switch" id="theme-switch"></div></div>
+        </div>
+        <div class="card">
+          <h3>Данные</h3>
+          <div class="row" style="gap:.4rem;flex-wrap:wrap">
+            <button class="btn" id="btn-seed">Сбросить на демо‑данные</button>
+            <button class="btn ghost" id="btn-clear">Очистить всё</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>О приложении</h3>
+          <div class="muted">Однофайловое мобильное веб‑приложение «Умный дом». Без библиотек. Данные хранятся в localStorage вашего устройства.</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Нижняя панель из 7 вкладок -->
+    <nav class="tabs" aria-label="Навигация по вкладкам">
+      <button class="tab active" data-tab="home" aria-label="Главная">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9z" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>Главная</span>
+      </button>
+      <button class="tab" data-tab="lights" aria-label="Свет">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M9 18h6m-8-9a5 5 0 1 1 10 0c0 2-1 3-2 4s-1 2-1 3H12m0 0H9c0-1-0-2-1-3S6 11 6 9" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>Свет</span>
+      </button>
+      <button class="tab" data-tab="climate" aria-label="Климат">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2v20M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>Климат</span>
+      </button>
+      <button class="tab" data-tab="security" aria-label="Безопасность">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>Охрана</span>
+      </button>
+      <button class="tab" data-tab="cams" aria-label="Камеры">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 7h11l3-3h4v16h-4l-3-3H3z" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>Камеры</span>
+      </button>
+      <button class="tab" data-tab="energy" aria-label="Энергия">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L6 14h5l-1 8 7-12h-5l1-8z" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>Энергия</span>
+      </button>
+      <button class="tab" data-tab="settings" aria-label="Настройки">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm-9 4h3m12 0h3M4.2 6.2l2.1 2.1m11.4 11.4l2.1 2.1M6.3 19.8l2.1-2.1m7.2-7.2l2.1-2.1" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>Настройки</span>
+      </button>
+    </nav>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="sheet">
+      <div class="row" style="margin-bottom:.6rem"><strong id="modal-title">Камера</strong><button class="btn ghost" id="modal-close">Закрыть</button></div>
+      <div class="camera"><div class="hint">Демо‑поток</div><svg viewBox="0 0 640 360" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#111"/><stop offset="1" stop-color="#333"/></linearGradient></defs><rect width="640" height="360" fill="url(#g)"/><g fill="#888"><circle cx="120" cy="200" r="40"/><rect x="260" y="170" width="120" height="60" rx="10"/><circle cx="520" cy="210" r="30"/></g></svg></div>
+    </div>
+  </div>
+
+  <script>
+    // --- Простое состояние и LocalStorage ---
+    const DEFAULT_STATE = {
+      theme: 'dark',
+      securityArmed: false,
+      climate:{ temp:22.0, hum:45, target:23, heat:false, cool:false },
+      lights:[
+        {id:'hall', name:'Прихожая', on:true, bright:70},
+        {id:'living', name:'Гостиная', on:false, bright:60},
+        {id:'kitchen', name:'Кухня', on:true, bright:80},
+        {id:'bed', name:'Спальня', on:false, bright:40},
+        {id:'kids', name:'Детская', on:false, bright:50},
+        {id:'bath', name:'Ванная', on:false, bright:100},
+      ],
+      locks:[
+        {id:'front', name:'Входная дверь', locked:true},
+        {id:'garage', name:'Гараж', locked:false},
+        {id:'balcony', name:'Балкон', locked:true}
+      ],
+      cams:[
+        {id:'door', name:'Улица / Дверь'},
+        {id:'yard', name:'Двор'},
+        {id:'garage-cam', name:'Гараж'},
+        {id:'kids-cam', name:'Детская'},
+      ],
+      energy:{ today:9.8, month:186, powerNow:0.62, days:[5.2,7.1,6.4,8.3,9.8,11.0,7.9] }
+    };
+
+    const LS_KEY = 'smart_home_demo_v1';
+    function load(){
+      try{ return JSON.parse(localStorage.getItem(LS_KEY)) || DEFAULT_STATE }catch(e){ return DEFAULT_STATE }
+    }
+    function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)) }
+
+    let state = load();
+
+    // --- Утилиты ---
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const fmt = n => (Math.round(n*10)/10).toFixed(1);
+
+    function setTheme(t){
+      $('#app').dataset.theme = t==='light'?'light':'dark';
+      state.theme = $('#app').dataset.theme;
+      const sw = $('#theme-switch');
+      sw && sw.classList.toggle('on', state.theme==='light');
+      save();
+    }
+
+    // --- Навигация по вкладкам ---
+    function activate(tab){
+      $$('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+      $$('.view').forEach(v=>v.classList.remove('active'));
+      const view = $('#tab-'+tab);
+      if(view){ view.classList.add('active') }
+    }
+
+    // --- Рендер карточек и контролов ---
+    function renderHome(){
+      $('#climate-temp').textContent = fmt(state.climate.temp);
+      $('#climate-hum').textContent = state.climate.hum;
+      $('#climate-target').textContent = state.climate.target;
+      const sec = $('#sec-armed');
+      sec.classList.toggle('on', state.securityArmed);
+      $('#door-state').textContent = state.locks.find(l=>l.id==='front')?.locked ? 'закрыта' : 'открыта';
+      $('#win-state').textContent = 'норм';
+      $('#sens-state').textContent = state.securityArmed ? 'на страже' : 'пассивно';
+      drawEnergy($('#energy-chart'), state.energy.days);
+    }
+
+    function renderLights(){
+      const box = $('#lights-list');
+      box.innerHTML = '';
+      state.lights.forEach(l=>{
+        const row = document.createElement('div');
+        row.className='device';
+        row.innerHTML = `<div><div class="name">${l.name}</div><div class="muted">Яркость: <span id="b-${l.id}">${l.bright}</span>%</div></div>`;
+        const sw = document.createElement('div'); sw.className='switch'; sw.role='switch'; sw.ariaLabel=l.name; sw.classList.toggle('on', l.on);
+        sw.addEventListener('click',()=>{ l.on=!l.on; sw.classList.toggle('on', l.on); save(); });
+        row.appendChild(sw);
+        box.appendChild(row);
+      });
+      const s = $('#lights-bright');
+      const v = $('#lights-bright-val');
+      s.value = Math.round(state.lights.reduce((a,c)=>a+c.bright,0)/state.lights.length);
+      v.textContent = s.value + '%';
+      s.oninput = ()=>{ v.textContent = s.value+'%'};
+      s.onchange = ()=>{
+        state.lights.forEach(l=>{ l.bright = Number(s.value); $('#b-'+l.id).textContent = l.bright });
+        save();
+      }
+    }
+
+    function renderClimate(){
+      const tgt = $('#target-temp');
+      const tgtVal = $('#target-temp-val');
+      tgt.value = state.climate.target; tgtVal.textContent = state.climate.target;
+      tgt.oninput = ()=>{ tgtVal.textContent = tgt.value };
+      tgt.onchange = ()=>{ state.climate.target = Number(tgt.value); save(); renderHome() };
+      const heat = $('#heat-switch'); heat.classList.toggle('on', state.climate.heat);
+      heat.onclick = ()=>{ state.climate.heat = !state.climate.heat; heat.classList.toggle('on', state.climate.heat); save(); };
+      const cool = $('#cool-switch'); cool.classList.toggle('on', state.climate.cool);
+      cool.onclick = ()=>{ state.climate.cool = !state.climate.cool; cool.classList.toggle('on', state.climate.cool); save(); };
+    }
+
+    function renderSecurity(){
+      const arm = $('#arm-switch'); arm.classList.toggle('on', state.securityArmed);
+      arm.onclick = ()=>{ state.securityArmed = !state.securityArmed; arm.classList.toggle('on', state.securityArmed); $('#sec-armed').classList.toggle('on', state.securityArmed); $('#sens-state').textContent = state.securityArmed ? 'на страже' : 'пассивно'; save(); };
+      const list = $('#locks-list'); list.innerHTML='';
+      state.locks.forEach(l=>{
+        const row = document.createElement('div'); row.className='device';
+        row.innerHTML = `<div><div class="name">${l.name}</div><div class="muted">Состояние: ${l.locked?'закрыто':'открыто'}</div></div>`;
+        const sw = document.createElement('div'); sw.className='switch'; sw.classList.toggle('on', l.locked);
+        sw.onclick = ()=>{ l.locked=!l.locked; sw.classList.toggle('on', l.locked); renderHome(); save(); };
+        row.appendChild(sw); list.appendChild(row);
+      })
+    }
+
+    function renderCams(){
+      const grid = $('#cams-grid'); grid.innerHTML='';
+      state.cams.forEach(c=>{
+        const card = document.createElement('div'); card.className='card';
+        card.innerHTML = `<div class="name" style="margin-bottom:8px">${c.name}</div><div class="camera" role="button" aria-label="${c.name}"><div class="hint">${c.name}</div></div>`;
+        card.querySelector('.camera').onclick = ()=>openModal(c.name);
+        grid.appendChild(card);
+      })
+    }
+
+    function renderEnergy(){
+      drawEnergy($('#energy-chart-2'), state.energy.days);
+      $('#pow-now').textContent = fmt(state.energy.powerNow);
+      $('#kwh-today').textContent = fmt(state.energy.today);
+      $('#kwh-month').textContent = Math.round(state.energy.month);
+    }
+
+    function drawEnergy(svg, arr){
+      const w = 320, h = 100, pad = 8; const max = Math.max(...arr, 1);
+      const bw = (w - pad*2) / arr.length; let x = pad;
+      svg.innerHTML = `<rect x="0" y="0" width="${w}" height="${h}" fill="none"></rect>`;
+      arr.forEach((v,i)=>{
+        const bh = (v/max) * (h-20); const y = h - bh - 6;
+        const bar = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bar.setAttribute('x', x+3); bar.setAttribute('y', y);
+        bar.setAttribute('width', bw-6); bar.setAttribute('height', bh);
+        bar.setAttribute('rx', 6); bar.setAttribute('fill', getComputedStyle(document.body).getPropertyValue('--accent'));
+        svg.appendChild(bar);
+        // подпись
+        const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x', x + bw/2); t.setAttribute('y', h-2); t.setAttribute('text-anchor','middle');
+        t.setAttribute('fill', getComputedStyle(document.body).getPropertyValue('--soft')); t.setAttribute('font-size','9');
+        t.textContent = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][i%7]; svg.appendChild(t);
+        x += bw;
+      });
+    }
+
+    // --- Сценарии ---
+    function runScenario(kind){
+      if(kind==='home'){
+        state.securityArmed = false; state.lights.forEach(l=>l.on=true); state.climate.target = 22; state.climate.cool=false; state.climate.heat=true;
+      }else if(kind==='away'){
+        state.securityArmed = true; state.lights.forEach(l=>l.on=false); state.climate.target = 18; state.climate.cool=false; state.climate.heat=false;
+      }else if(kind==='night'){
+        state.securityArmed = true; state.lights.forEach(l=>l.on=false); (state.lights.find(l=>l.id==='hall')||{}).on=true; state.climate.target=21;
+      }
+      save(); renderHome(); renderLights(); renderClimate(); renderSecurity();
+      flash(`Сценарий «${kind}» применён`);
+    }
+
+    // --- Малые удобства ---
+    function flash(msg){
+      const m = document.createElement('div');
+      m.textContent = msg; m.style.position='fixed'; m.style.left='50%'; m.style.bottom='80px'; m.style.transform='translateX(-50%)';
+      m.style.background='var(--card)'; m.style.border='1px solid var(--muted)'; m.style.padding='10px 14px'; m.style.borderRadius='12px'; m.style.boxShadow='var(--shadow)';
+      document.body.appendChild(m); setTimeout(()=>m.remove(), 1500);
+    }
+
+    // --- Модалка ---
+    const modal = $('#modal');
+    function openModal(title){ $('#modal-title').textContent = title; modal.classList.add('open'); }
+    $('#modal-close').onclick = ()=>modal.classList.remove('open');
+    modal.addEventListener('click',e=>{ if(e.target===modal) modal.classList.remove('open') });
+
+    // --- Инициализация ---
+    function tickTime(){
+      const d = new Date(); const hh = String(d.getHours()).padStart(2,'0'); const mm = String(d.getMinutes()).padStart(2,'0');
+      $('#timepill').textContent = `${hh}:${mm}`;
+    }
+
+    function seedDemo(){ state = JSON.parse(JSON.stringify(DEFAULT_STATE)); save(); boot(); flash('Демо‑данные восстановлены'); }
+    function clearAll(){ localStorage.removeItem(LS_KEY); state = JSON.parse(JSON.stringify(DEFAULT_STATE)); boot(); flash('Данные очищены'); }
+
+    function boot(){
+      setTheme(state.theme);
+      renderHome(); renderLights(); renderClimate(); renderSecurity(); renderCams(); renderEnergy();
+    }
+
+    // --- Слушатели ---
+    $$('.tab').forEach(b=> b.addEventListener('click',()=> activate(b.dataset.tab)) );
+    $('#sec-armed').addEventListener('click',()=>{ state.securityArmed=!state.securityArmed; $('#sec-armed').classList.toggle('on', state.securityArmed); save(); renderSecurity(); })
+    $$('[data-run-scenario]').forEach(b=> b.addEventListener('click',()=> runScenario(b.dataset.runScenario)) );
+    $('#theme-switch').addEventListener('click',()=> setTheme(state.theme==='light'?'dark':'light'));
+    $('#btn-seed').addEventListener('click', seedDemo);
+    $('#btn-clear').addEventListener('click', clearAll);
+
+    // Симуляция плавания температуры/энергии
+    setInterval(()=>{
+      const dir = state.climate.temp < state.climate.target ? 0.05 : -0.05;
+      state.climate.temp = Math.max(16, Math.min(30, state.climate.temp + dir + (Math.random()-0.5)*0.05));
+      state.energy.powerNow = Math.max(0.2, Math.min(3.5, state.energy.powerNow + (Math.random()-0.5)*0.08));
+      state.energy.today = Math.max(0, state.energy.today + state.energy.powerNow/60/3); // грубо
+      save(); renderHome(); $('#pow-now').textContent = fmt(state.energy.powerNow); $('#kwh-today').textContent = fmt(state.energy.today);
+    }, 3000);
+
+    setInterval(tickTime, 1000); tickTime();
+    boot();
+  </script>
+</body>
+</html>
